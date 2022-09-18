@@ -45,34 +45,49 @@ def Inexact_Line_Search(XN, t, alpha, max_iter):
     return alpha
 
 
-def Gradient_Descent(X0, t, alpha, eps, max_iter):
+def Gradient_Descent(X0, t, alpha0, eps, max_iter):
     results = []
     XN = X0
     f = f_x(XN)  # compute function value at initial point
     g = g_x(XN)  # compute gradient at initial point
+    f_x_ag = f_x(XN - alpha0 * g)  # actual function value at step size alpha
+    phi = phi_alpha(alpha0, t, f, g)  # 1st order approx. of function value at step size alpha
     iter = 0
 
-    results.append([iter, f, g, alpha])
+    results.append([iter, f, g[0], g[1], f_x_ag, phi, alpha0, np.linalg.norm(g)])
 
     while np.linalg.norm(g) > eps and iter < max_iter:
 
-        alpha = Inexact_Line_Search(XN, t, alpha, max_iter)
+        alpha = Inexact_Line_Search(XN, t, alpha0, max_iter)
 
         XN = XN - alpha*g
 
-        f = f_x(XN)  # compute function value at current point
-        g = g_x(XN)  # compute gradient at current point
+        f = f_x(XN)  # compute function value at next point
+        g = g_x(XN)  # compute gradient at next point
+        f_x_ag = f_x(XN - alpha * g)  # actual function value at step size alpha
+        phi = phi_alpha(alpha, t, f, g)  # 1st order approx. of function value at step size alpha
 
         iter += 1
 
-        results.append([iter, f, g, alpha])
+        results.append([iter, f, g[0], g[1], f_x_ag, phi, alpha0, np.linalg.norm(g)])
 
     return XN, results
 
+def Convergence(f_list, f_star, X0):
+    X2_0 = int(X0[0])
+    X3_0 = int(X0[1])
+    error = np.zeros(len(f_list))
+    for i in range(0, len(f_list)):
+        error[i] = abs(f_list[i] - f_star)
 
-
-
-
+    plt.figure()
+    plt.plot(error)
+    plt.ylabel(r'|$f_k$-$f^{*}$|')
+    plt.yscale('log')
+    plt.ylim([1e-13, 10])
+    plt.xlabel('Iteration #, k')
+    plt.xlim([0, 90])
+    plt.savefig('.\\P2b_GD_Results\Convergence_X2_0='+str(X2_0)+'_X3_0='+str(X3_0)+'.jpg', bbox_inches='tight', dpi=300)
 
 
 
@@ -85,28 +100,22 @@ eps = 1e-6
 max_iter = 1000
 
 # initial guess
-x2_0 = 0
-x3_0 = 0
+x2_0 = 100
+x3_0 = -100
 X0 = np.array([[x2_0], [x3_0]])
 
 # Calculate
 XN, results = Gradient_Descent(X0, t, alpha, eps, max_iter)
-Results = pd.DataFrame(results, columns=['iter', 'f', 'g', 'alpha'])
-Results.to_csv('Results.csv', index=False)
+Results = pd.DataFrame(results, columns=['iter', 'f', 'g[0]', 'g[1]', 'f_x_ag', 'phi', 'alpha', 'Norm(g)'])
+Results.to_csv('.\\P2b_GD_Results\Debug_Results_X2_0='+str(x2_0)+'_X3_0='+str(x3_0)+'.csv', index=False)
+
+# plot convergence
+f_list = np.array(Results['f'])
+x_star = np.array([[-1/7], [11/14]])
+f_star = f_x(x_star)
+Convergence(f_list, f_star, X0)
+
+# print results
+Total_Iterations = len(f_list)+1
 print(XN)
-
-# x_star = np.array([[-1/7], [11/14]])
-# f_star = f_x(x_star)
-# c = np.zeros(len(results))
-# for i in range(0, len(c)-1):
-#     c[i] = abs(f_list[i+1]-f_star)/abs(f_list[i]-f_star)
-
-# plt.figure()
-# plt.plot(c)
-# plt.yscale('log')
-# plt.ylim([1e-6, 1e2])
-# plt.savefig('test.png', bbox_inches='tight', dpi=300)
-
-
-
-
+print('\n'+str(Total_Iterations))
